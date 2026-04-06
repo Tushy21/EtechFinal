@@ -1,0 +1,9 @@
+__pycache__/
+.env
+node_modules/
+dist/
+build/
+*.pyc
+.faiss_index/
+uploaded_pdfs/
+.DS_Store
