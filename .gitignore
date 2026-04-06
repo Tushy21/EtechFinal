@@ -7,3 +7,4 @@ build/
 .faiss_index/
 uploaded_pdfs/
 .DS_Store
+venv/
