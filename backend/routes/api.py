@@ -1,7 +1,10 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pydantic import BaseModel
-# from rag.pipeline import process_pdf, answer_query
-# from services.chat_history import get_history, add_message
+from rag.loader import extract_text_from_pdf
+from rag.splitter import split_text_into_chunks
+from rag.retriever import store_chunks_in_faiss, retrieve_top_k_chunks
+from rag.llm import generate_answer
+from services.chat_history import get_history, add_message, clear_history
 
 router = APIRouter()
 
@@ -13,22 +16,55 @@ async def upload_pdf(file: UploadFile = File(...)):
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
     
-    # Save file and trigger RAG pipeline processing
-    # TODO: implement PDF processing
-    return {"message": f"Successfully uploaded and processed {file.filename}"}
+    try:
+        # Read file bytes
+        contents = await file.read()
+        
+        # 1. Extract text from PDF
+        text = extract_text_from_pdf(contents)
+        if not text.strip():
+            raise HTTPException(status_code=400, detail="Could not extract any text from the PDF. It might be empty or scanned.")
+            
+        # 2. Split into chunks
+        chunks = split_text_into_chunks(text)
+        
+        # 3. Store in FAISS
+        store_chunks_in_faiss(chunks)
+        
+        # Clear previous chat history if a new document is uploaded
+        clear_history()
+        
+        return {"message": f"Successfully uploaded, processed, and indexed {file.filename}."}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/query")
 async def query_pdf(request: QueryRequest):
     if not request.question:
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
         
-    # TODO: implement RAG retrieval and answer generation
-    answer = f"Echo: {request.question}"
-    
-    # TODO: store in history
-    return {"answer": answer}
+    try:
+        # 1. Add user query to history
+        add_message("user", request.question)
+        
+        # 2. Retrieve top-k relevant chunks
+        retrieved_chunks = retrieve_top_k_chunks(request.question, k=4)
+        
+        # 3. Generate Answer
+        if not retrieved_chunks:
+            answer = "I don't know. (No relevant context found in the document)."
+        else:
+            answer = generate_answer(request.question, retrieved_chunks)
+        
+        # 4. Add answer to history
+        add_message("assistant", answer)
+        
+        return {"answer": answer}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/history")
 async def get_chat_history():
-    # TODO: retrieve history
-    return {"history": []}
+    return {"history": get_history()}
