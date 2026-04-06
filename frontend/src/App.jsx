@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FileText, Github } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { api } from './services/api'
 
 import FileUploadComponent from './components/FileUploadComponent'
@@ -78,7 +78,7 @@ function App() {
           rel="noopener noreferrer"
           className="text-gray-500 hover:text-gray-800 transition-colors"
         >
-          <Github className="w-6 h-6" />
+          GitHub Repository
         </a>
       </nav>
 

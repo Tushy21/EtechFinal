@@ -1,16 +1,19 @@
-import os
-from dotenv import load_dotenv
-from langchain_openai import OpenAIEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
-load_dotenv()
+# Cached model instance so we only load it once
+_embeddings_model = None
 
 def get_embeddings_model():
     """
-    Returns an instance of OpenAIEmbeddings.
-    Assumes OPENAI_API_KEY is set in the environment or .env file.
+    Returns a locally-running HuggingFace sentence-transformers embeddings model.
+    Model: all-MiniLM-L6-v2 — fast, small, and high quality.
+    No API key required.
     """
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY is missing from environment variables.")
-    
-    return OpenAIEmbeddings(openai_api_key=api_key)
+    global _embeddings_model
+    if _embeddings_model is None:
+        _embeddings_model = HuggingFaceEmbeddings(
+            model_name="all-MiniLM-L6-v2",
+            model_kwargs={"device": "cpu"},
+            encode_kwargs={"normalize_embeddings": True}
+        )
+    return _embeddings_model
